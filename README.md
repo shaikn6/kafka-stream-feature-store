@@ -1,3 +1,8 @@
+> 🔒 **Private Repository** — Source code available on request for verified employers and collaborators.
+> 📧 Contact: shaikn6@udayton.edu | [LinkedIn](https://linkedin.com/in/nagizaazshaik)
+
+---
+
 # kafka-stream-feature-store
 
 [![CI](https://github.com/shaikn6/kafka-stream-feature-store/actions/workflows/ci.yml/badge.svg)](https://github.com/shaikn6/kafka-stream-feature-store/actions/workflows/ci.yml)
@@ -12,6 +17,17 @@ Ingests feature events via Apache Kafka, materialises them into Redis with TTL-b
 freshness guarantees, and exposes a FastAPI serving layer with per-feature SLA monitoring.
 
 **Achieved 45-second average feature freshness vs. 24-hour batch baseline.**
+
+## Screenshots
+
+### System Architecture
+![Architecture](docs/screenshots/architecture.png)
+
+### Feature Freshness — SLA Compliance
+![Feature Freshness](docs/screenshots/feature_freshness.png)
+
+### Write Latency vs Throughput
+![Throughput](docs/screenshots/throughput_chart.png)
 
 ---
 

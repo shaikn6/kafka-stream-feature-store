@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kafka Feature Store — Real-Time Monitor</title>
+  <style>
+    /* ── Tokens ── */
+    :root {
+      --bg-base:      #0d0f1a;
+      --bg-surface:   #13172a;
+      --bg-card:      #1a1f38;
+      --border:       #252b4a;
+      --accent-green: #00e676;
+      --accent-orange:#e87722;
+      --accent-red:   #ff5252;
+      --accent-blue:  #64b5f6;
+      --text-primary: #e8eaf6;
+      --text-muted:   #7986cb;
+      --font:         'Segoe UI', system-ui, sans-serif;
+      --radius:       8px;
+      --duration:     300ms;
+    }
+
+    /* ── Reset / Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background: var(--bg-base);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 0 0 2rem;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #0d0f1a 0%, #1a1340 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 1.25rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .live-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      flex-shrink: 0;
+      animation: pulse-dot 1.6s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(0,230,118,.6); }
+      50%       { box-shadow: 0 0 0 6px rgba(0,230,118,0); }
+    }
+    header h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--text-primary);
+    }
+    header h1 span { color: var(--accent-orange); }
+    .header-badge {
+      margin-left: auto;
+      font-size: .75rem;
+      background: rgba(232,119,34,.15);
+      border: 1px solid rgba(232,119,34,.4);
+      color: var(--accent-orange);
+      padding: .25rem .7rem;
+      border-radius: 999px;
+      letter-spacing: .04em;
+    }
+
+    /* ── Main layout ── */
+    main { padding: 1.75rem 2rem; max-width: 1200px; margin: 0 auto; }
+
+    /* ── Metric cards ── */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.75rem;
+    }
+    .metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      position: relative;
+      overflow: hidden;
+      transition: transform var(--duration), box-shadow var(--duration);
+    }
+    .metric-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    }
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 3px;
+    }
+    .metric-card.green::before  { background: var(--accent-green); }
+    .metric-card.orange::before { background: var(--accent-orange); }
+    .metric-card.blue::before   { background: var(--accent-blue); }
+
+    .metric-label {
+      font-size: .78rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: .5rem;
+    }
+    .metric-value {
+      font-size: 2.1rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .metric-card.green  .metric-value { color: var(--accent-green); }
+    .metric-card.orange .metric-value { color: var(--accent-orange); }
+    .metric-card.blue   .metric-value { color: var(--accent-blue); }
+    .metric-sub {
+      margin-top: .45rem;
+      font-size: .75rem;
+      color: var(--text-muted);
+    }
+
+    /* ── Feature table ── */
+    .section-title {
+      font-size: .85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      margin-bottom: .85rem;
+    }
+    .table-wrap {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: auto;
+      margin-bottom: 1.75rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .875rem;
+    }
+    thead th {
+      background: #111428;
+      color: var(--text-muted);
+      font-size: .73rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      padding: .75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background var(--duration);
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(100,181,246,.05); }
+    tbody td {
+      padding: .7rem 1rem;
+      color: var(--text-primary);
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: .83rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: .2rem .6rem;
+      border-radius: 4px;
+      font-size: .72rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+    }
+    .badge-fresh {
+      background: rgba(0,230,118,.12);
+      color: var(--accent-green);
+      border: 1px solid rgba(0,230,118,.3);
+    }
+    .badge-stale {
+      background: rgba(255,82,82,.12);
+      color: var(--accent-red);
+      border: 1px solid rgba(255,82,82,.3);
+    }
+
+    /* ── Status bar ── */
+    .status-bar {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .85rem 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem 2rem;
+      align-items: center;
+      font-size: .82rem;
+    }
+    .status-item { display: flex; align-items: center; gap: .4rem; color: var(--text-muted); }
+    .status-item strong { color: var(--text-primary); }
+    .dot-green { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-green);
+      animation: pulse-dot 1.6s ease-in-out infinite; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="live-dot" aria-label="Live"></div>
+  <h1><span>Kafka</span> Feature Store — Real-Time Monitor</h1>
+  <span class="header-badge">LIVE</span>
+</header>
+
+<main>
+
+  <!-- Metric Cards -->
+  <div class="metrics">
+    <article class="metric-card green">
+      <p class="metric-label">Features Registered</p>
+      <p class="metric-value">24</p>
+      <p class="metric-sub">+2 added this week</p>
+    </article>
+    <article class="metric-card orange">
+      <p class="metric-label">Avg Freshness</p>
+      <p class="metric-value">38s</p>
+      <p class="metric-sub">SLA target: &lt; 60s</p>
+    </article>
+    <article class="metric-card blue">
+      <p class="metric-label">SLA Compliance</p>
+      <p class="metric-value">98.3%</p>
+      <p class="metric-sub">Last 7 days</p>
+    </article>
+  </div>
+
+  <!-- Feature Table -->
+  <p class="section-title">Live Feature Snapshot</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Feature Name</th>
+          <th>Entity ID</th>
+          <th>Value</th>
+          <th>Age (s)</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>rolling_7d_spend</td>
+          <td>customer_00042</td>
+          <td>342.15</td>
+          <td>8</td>
+          <td><span class="badge badge-fresh">Fresh</span></td>
+        </tr>
+        <tr>
+          <td>order_count_24h</td>
+          <td>customer_00042</td>
+          <td>7</td>
+          <td>14</td>
+          <td><span class="badge badge-fresh">Fresh</span></td>
+        </tr>
+        <tr>
+          <td>avg_basket_size</td>
+          <td>customer_00117</td>
+          <td>48.92</td>
+          <td>22</td>
+          <td><span class="badge badge-fresh">Fresh</span></td>
+        </tr>
+        <tr>
+          <td>session_count_1h</td>
+          <td>customer_00223</td>
+          <td>3</td>
+          <td>31</td>
+          <td><span class="badge badge-fresh">Fresh</span></td>
+        </tr>
+        <tr>
+          <td>cart_abandonment_flag</td>
+          <td>customer_00305</td>
+          <td>1</td>
+          <td>45</td>
+          <td><span class="badge badge-fresh">Fresh</span></td>
+        </tr>
+        <tr>
+          <td>lifetime_orders</td>
+          <td>customer_00089</td>
+          <td>134</td>
+          <td>52</td>
+          <td><span class="badge badge-fresh">Fresh</span></td>
+        </tr>
+        <tr>
+          <td>promo_redemption_rate</td>
+          <td>customer_00512</td>
+          <td>0.73</td>
+          <td>58</td>
+          <td><span class="badge badge-fresh">Fresh</span></td>
+        </tr>
+        <tr>
+          <td>days_since_last_order</td>
+          <td>customer_00088</td>
+          <td>12</td>
+          <td>67</td>
+          <td><span class="badge badge-stale">Stale</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <span class="status-item">
+      <span class="dot-green"></span>
+      Producer Status: <strong>Running</strong>
+    </span>
+    <span class="status-item">Consumer Lag: <strong>0 msgs</strong></span>
+    <span class="status-item">Redis Memory: <strong>142 MB</strong></span>
+    <span class="status-item">Kafka Topic: <strong>features.raw</strong></span>
+    <span class="status-item">Partitions: <strong>3</strong></span>
+  </div>
+
+</main>
+
+</body>
+</html>
