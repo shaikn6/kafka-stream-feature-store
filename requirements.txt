@@ -15,3 +15,12 @@ asyncpg>=0.27.0
 alembic>=1.9.0
 structlog>=22.3.0
 prometheus-client>=0.15.0
+
+# V2 additions
+pyspark>=3.5.0
+duckdb>=0.10.0
+pyarrow>=14.0.0
+matplotlib>=3.7.0
+numpy>=1.24.0
+pandas>=2.0.0
+streamlit>=1.28.0
