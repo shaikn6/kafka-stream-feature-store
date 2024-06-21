@@ -5,12 +5,13 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 import redis
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Path, status
 
 from feature_store.monitor import FeatureMonitor
 from feature_store.registry import FeatureRegistry
@@ -20,6 +21,44 @@ from feature_store.schemas.feature_event import (
     FeatureResponse,
     HealthResponse,
 )
+
+# ---------------------------------------------------------------------------
+# Input validation helpers
+# ---------------------------------------------------------------------------
+
+# Allow alphanumeric, hyphens, underscores, and dots in entity IDs.
+# Colons are explicitly excluded to prevent Redis key structure injection.
+_ENTITY_ID_RE = re.compile(r"^[a-zA-Z0-9_\-\.]{1,128}$")
+
+# Feature names must already be validated as snake_case by FeatureEvent, but
+# we enforce the same pattern here for the serving layer's direct lookup path.
+_FEATURE_NAME_RE = re.compile(r"^[a-z0-9_]{1,64}$")
+
+
+def _validate_entity_id(entity_id: str) -> str:
+    """Raise 400 if entity_id contains characters that would pollute the Redis key."""
+    if not _ENTITY_ID_RE.match(entity_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "entity_id must be 1–128 characters and contain only "
+                "alphanumerics, hyphens, underscores, or dots."
+            ),
+        )
+    return entity_id
+
+
+def _validate_feature_name(feature_name: str) -> str:
+    """Raise 400 if feature_name contains characters outside the allowed set."""
+    if not _FEATURE_NAME_RE.match(feature_name):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "feature_name must be 1–64 lowercase alphanumeric characters "
+                "with underscores only."
+            ),
+        )
+    return feature_name
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +140,7 @@ def create_app(
 
     @app.get("/features/{entity_id}", response_model=EntityFeaturesResponse)
     async def get_entity_features(entity_id: str) -> EntityFeaturesResponse:
+        _validate_entity_id(entity_id)
         definitions = _registry().list_all()
         features: Dict[str, FeatureResponse] = {}
 
@@ -148,6 +188,8 @@ def create_app(
 
     @app.get("/features/{entity_id}/{feature_name}", response_model=FeatureResponse)
     async def get_single_feature(entity_id: str, feature_name: str) -> FeatureResponse:
+        _validate_entity_id(entity_id)
+        _validate_feature_name(feature_name)
         defn = _registry().get(feature_name)
         freshness_sla = defn.expected_freshness_seconds if defn else None
 
