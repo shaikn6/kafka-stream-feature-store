@@ -5,9 +5,6 @@ All tests run without Kafka, Spark, or DuckDB.
 
 from __future__ import annotations
 
-import math
-import time
-
 import pytest
 
 from stream.windowed_agg import (
@@ -92,8 +89,8 @@ class TestTumblingWindowEngine:
 
     def test_events_in_adjacent_windows(self):
         eng = TumblingWindowEngine(size_seconds=60)
-        eng.ingest(Event(ts=30.0,  user_id="u", amount=10.0))   # window 0
-        eng.ingest(Event(ts=90.0,  user_id="u", amount=20.0))   # window 60
+        eng.ingest(Event(ts=30.0, user_id="u", amount=10.0))   # window 0
+        eng.ingest(Event(ts=90.0, user_id="u", amount=20.0))   # window 60
         eng.ingest(Event(ts=150.0, user_id="u", amount=30.0))   # window 120
         assert eng.bucket_count() == 3
 
