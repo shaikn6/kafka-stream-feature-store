@@ -17,9 +17,7 @@ on 5 M-row datasets on a laptop.
 from __future__ import annotations
 
 import logging
-import os
 import time
-from pathlib import Path
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
@@ -206,9 +204,9 @@ class FeatureQueryLayer:
         for col in numeric_cols:
             summary[col] = {
                 "mean": float(raw.get(f"{col}_mean") or 0),
-                "std":  float(raw.get(f"{col}_std")  or 0),
-                "min":  float(raw.get(f"{col}_min")  or 0),
-                "max":  float(raw.get(f"{col}_max")  or 0),
+                "std": float(raw.get(f"{col}_std") or 0),
+                "min": float(raw.get(f"{col}_min") or 0),
+                "max": float(raw.get(f"{col}_max") or 0),
             }
         return summary
 
@@ -252,9 +250,9 @@ class FeatureQueryLayer:
 
         stats: dict[str, float] = {}
         for name, times in results.items():
-            stats[f"{name}_min"]  = round(min(times), 1)
+            stats[f"{name}_min"] = round(min(times), 1)
             stats[f"{name}_mean"] = round(sum(times) / len(times), 1)
-            stats[f"{name}_max"]  = round(max(times), 1)
+            stats[f"{name}_max"] = round(max(times), 1)
 
         # Print benchmark table
         print("\n=== DuckDB Query Benchmark ===")
@@ -288,11 +286,11 @@ def _agg_for_metric(metric: str) -> str:
     """Return the appropriate aggregation expression for a metric column."""
     # recency: take MAX (most recent = smallest value, but we want the user-level stat)
     agg_map = {
-        "recency_days":            "MAX(recency_days)",
-        "frequency":               "MAX(frequency)",
-        "monetary":                "MAX(monetary)",
-        "rolling_7d_spend_avg":    "AVG(rolling_7d_spend_avg)",
-        "anomaly_score":           "AVG(anomaly_score)",
+        "recency_days": "MAX(recency_days)",
+        "frequency": "MAX(frequency)",
+        "monetary": "MAX(monetary)",
+        "rolling_7d_spend_avg": "AVG(rolling_7d_spend_avg)",
+        "anomaly_score": "AVG(anomaly_score)",
         "merchant_category_count": "MAX(merchant_category_count)",
     }
     return agg_map[metric]

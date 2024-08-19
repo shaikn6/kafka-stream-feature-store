@@ -19,9 +19,8 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import os
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -31,6 +30,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Data models
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SnapshotMeta:
@@ -43,8 +43,8 @@ class SnapshotMeta:
     schema_hash: str                    # SHA-256 of sorted field names + types
     row_count: int
     stats: dict[str, Any]              # per-column mean/min/max
-    parent_snapshot_id: Optional[str]  = None
-    is_current: bool                    = False
+    parent_snapshot_id: Optional[str] = None
+    is_current: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -343,9 +343,9 @@ class FeatureVersioner:
                 for col in numeric_cols:
                     stats[col] = {
                         "mean": float(row.get(f"{col}_mean") or 0),
-                        "std":  float(row.get(f"{col}_std")  or 0),
-                        "min":  float(row.get(f"{col}_min")  or 0),
-                        "max":  float(row.get(f"{col}_max")  or 0),
+                        "std": float(row.get(f"{col}_std") or 0),
+                        "min": float(row.get(f"{col}_min") or 0),
+                        "max": float(row.get(f"{col}_max") or 0),
                     }
 
             tmp_con.close()

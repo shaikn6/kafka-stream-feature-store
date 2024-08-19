@@ -9,14 +9,13 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
-from unittest.mock import MagicMock
 
 import fakeredis
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 
-from feature_store.schemas.feature_event import FeatureDefinition, FeatureResponse
+from feature_store.schemas.feature_event import FeatureDefinition
 from feature_store.serving import create_app
 
 

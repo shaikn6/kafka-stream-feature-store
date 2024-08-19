@@ -4,13 +4,13 @@ Run: python scripts/generate_screenshots.py
 Output: docs/screenshots/{architecture,feature_freshness,throughput_chart}.png
 """
 
+import numpy as np
+from matplotlib.patches import FancyBboxPatch
+import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
 import os
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
-import numpy as np
 
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "docs", "screenshots")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -60,11 +60,11 @@ def generate_architecture():
     ax.set_ylim(0, 5)
     ax.axis("off")
 
-    KAFKA_ORANGE   = "#E87722"
-    REDIS_RED      = "#DC382D"
-    FASTAPI_GREEN  = "#009688"
-    POSTGRES_BLUE  = "#336791"
-    SOURCE_GRAY    = "#5a5a7a"
+    KAFKA_ORANGE = "#E87722"
+    REDIS_RED = "#DC382D"
+    FASTAPI_GREEN = "#009688"
+    POSTGRES_BLUE = "#336791"
+    SOURCE_GRAY = "#5a5a7a"
 
     BH = 0.8   # box height
     BW = 1.6   # box width
@@ -113,12 +113,12 @@ def generate_architecture():
 
     # Legend
     legend_items = [
-        mpatches.Patch(facecolor=KAFKA_ORANGE,  label="Kafka"),
-        mpatches.Patch(facecolor=REDIS_RED,     label="Redis"),
+        mpatches.Patch(facecolor=KAFKA_ORANGE, label="Kafka"),
+        mpatches.Patch(facecolor=REDIS_RED, label="Redis"),
         mpatches.Patch(facecolor=FASTAPI_GREEN, label="FastAPI"),
         mpatches.Patch(facecolor=POSTGRES_BLUE, label="PostgreSQL"),
     ]
-    leg = ax.legend(
+    ax.legend(
         handles=legend_items,
         loc="lower left",
         fontsize=8,
@@ -148,17 +148,17 @@ def generate_feature_freshness():
             + np.random.normal(0, noise_amp * 0.3, len(t))
         ).clip(0, 58)
 
-    order_count    = freshness_wave(32, 6, 18, 0.0)
-    revenue_sum    = freshness_wave(38, 6, 22, 1.1)
-    avg_basket     = freshness_wave(44, 5, 26, 2.3)
+    order_count = freshness_wave(32, 6, 18, 0.0)
+    revenue_sum = freshness_wave(38, 6, 22, 1.1)
+    avg_basket = freshness_wave(44, 5, 26, 2.3)
 
     fig, ax = plt.subplots(figsize=(10, 6))
     fig.patch.set_facecolor("#1a1a2e")
     ax.set_facecolor("#16213e")
 
-    ax.plot(t, order_count,  color="#00c9ff", lw=2.0, label="order_count")
-    ax.plot(t, revenue_sum,  color="#f7971e", lw=2.0, label="revenue_sum")
-    ax.plot(t, avg_basket,   color="#c471ed", lw=2.0, label="avg_basket_size")
+    ax.plot(t, order_count, color="#00c9ff", lw=2.0, label="order_count")
+    ax.plot(t, revenue_sum, color="#f7971e", lw=2.0, label="revenue_sum")
+    ax.plot(t, avg_basket, color="#c471ed", lw=2.0, label="avg_basket_size")
 
     ax.axhline(60, color="#ff4444", lw=1.8, linestyle="--", label="SLA Threshold (60s)")
     ax.fill_between(t, 60, 70, color="#ff4444", alpha=0.08)
@@ -196,7 +196,7 @@ def generate_feature_freshness():
 # ── 3. Throughput / latency bar chart ─────────────────────────────────────────
 
 def generate_throughput_chart():
-    labels    = ["10/s", "50/s", "100/s", "200/s", "500/s"]
+    labels = ["10/s", "50/s", "100/s", "200/s", "500/s"]
     latencies = [12, 18, 24, 35, 67]
 
     # Gradient: green → yellow → red

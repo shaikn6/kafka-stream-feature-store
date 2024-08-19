@@ -25,7 +25,6 @@ Or via CLI::
 from __future__ import annotations
 
 import collections
-import heapq
 import logging
 import math
 import random
@@ -39,6 +38,7 @@ logger = logging.getLogger(__name__)
 # Event schema
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True, order=True)
 class Event:
     """A single timestamped event in the stream.
@@ -50,8 +50,8 @@ class Event:
 
     ts: float           # sort key — used by heapq
     user_id: str = field(compare=False)
-    amount: float       = field(compare=False, default=0.0)
-    event_type: str     = field(compare=False, default="txn")
+    amount: float = field(compare=False, default=0.0)
+    event_type: str = field(compare=False, default="txn")
 
 
 # ---------------------------------------------------------------------------
@@ -230,9 +230,9 @@ class SlidingWindowEngine:
 # ---------------------------------------------------------------------------
 
 _TUMBLING_CONFIGS = {
-    "1min":  60,
-    "5min":  300,
-    "1hr":   3600,
+    "1min": 60,
+    "5min": 300,
+    "1hr": 3600,
 }
 
 

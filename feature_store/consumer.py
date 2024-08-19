@@ -15,8 +15,6 @@ import logging
 import os
 import signal
 import threading
-import time
-from datetime import datetime
 from typing import Optional
 
 import redis
