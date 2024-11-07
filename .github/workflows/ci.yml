@@ -50,7 +50,7 @@ jobs:
         run: |
           pip install pytest-cov
           pytest tests/test_consumer.py tests/test_producer.py \
-            tests/test_monitor.py tests/test_serving.py -v \
+            tests/test_monitor.py tests/test_serving.py tests/test_registry.py -v \
             --cov=feature_store \
             --cov-report=term-missing \
             --cov-report=xml \
