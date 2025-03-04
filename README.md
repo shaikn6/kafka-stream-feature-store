@@ -1,7 +1,3 @@
-> **Private Repository** — Source code available on request for verified employers.
-> Contact: shaikn6@udayton.edu
-
-
 ---
 
 # kafka-stream-feature-store
