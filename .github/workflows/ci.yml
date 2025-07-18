@@ -57,7 +57,7 @@ jobs:
             --cov=feature_store \
             --cov-report=term-missing \
             --cov-report=xml \
-            --cov-fail-under=80
+            --cov-fail-under=95
 
       - name: Run V2 tests (no Spark — DuckDB + windowed agg + versioner)
         run: |
