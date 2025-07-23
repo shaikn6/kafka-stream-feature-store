@@ -7,7 +7,17 @@ import os
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, create_engine, select, text
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Integer,
+    String,
+    Text,
+    create_engine,
+    select,
+    text,
+)
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
@@ -15,10 +25,13 @@ from feature_store.schemas.feature_event import FeatureDefinition
 
 logger = logging.getLogger(__name__)
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://featurestore:featurestore@localhost:5432/featurestore",
-)
+_DATABASE_URL_DEFAULT = os.getenv("DATABASE_URL")
+if _DATABASE_URL_DEFAULT is None:
+    raise RuntimeError(
+        "DATABASE_URL environment variable is required. "
+        "Example: postgresql://user:password@localhost:5432/featurestore"
+    )
+DATABASE_URL = _DATABASE_URL_DEFAULT
 
 
 class Base(DeclarativeBase):
@@ -36,7 +49,9 @@ class FeatureDefinitionModel(Base):
     value_type = Column(String(50), nullable=False, default="float")
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
 
 class FeatureRegistry:
@@ -70,7 +85,9 @@ class FeatureRegistry:
                 session.refresh(model)
             except IntegrityError:
                 session.rollback()
-                raise ValueError(f"Feature '{definition.feature_name}' already exists in registry")
+                raise ValueError(
+                    f"Feature '{definition.feature_name}' already exists in registry"
+                )
             return self._to_pydantic(model)
 
     def get(self, feature_name: str) -> Optional[FeatureDefinition]:
@@ -91,7 +108,13 @@ class FeatureRegistry:
             return [self._to_pydantic(m) for m in models]
 
     def update(self, feature_name: str, **kwargs) -> FeatureDefinition:
-        allowed = {"description", "owner", "expected_freshness_seconds", "value_type", "is_active"}
+        allowed = {
+            "description",
+            "owner",
+            "expected_freshness_seconds",
+            "value_type",
+            "is_active",
+        }
         invalid = set(kwargs) - allowed
         if invalid:
             raise ValueError(f"Cannot update fields: {invalid}")
