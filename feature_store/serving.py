@@ -67,10 +67,13 @@ REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_DB = int(os.getenv("REDIS_DB", "0"))
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", None)
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://featurestore:featurestore@localhost:5432/featurestore",
-)
+_DATABASE_URL_DEFAULT = os.getenv("DATABASE_URL")
+if _DATABASE_URL_DEFAULT is None:
+    raise RuntimeError(
+        "DATABASE_URL environment variable is required. "
+        "Example: postgresql://user:password@localhost:5432/featurestore"
+    )
+DATABASE_URL = _DATABASE_URL_DEFAULT
 
 
 def create_app(
@@ -241,7 +244,11 @@ def create_app(
     async def list_registry() -> List[FeatureDefinition]:
         return _registry().list_all()
 
-    @app.post("/registry", response_model=FeatureDefinition, status_code=status.HTTP_201_CREATED)
+    @app.post(
+        "/registry",
+        response_model=FeatureDefinition,
+        status_code=status.HTTP_201_CREATED,
+    )
     async def register_feature(definition: FeatureDefinition) -> FeatureDefinition:
         try:
             return _registry().create(definition)
