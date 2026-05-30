@@ -1,0 +1,176 @@
+version: "3.9"
+
+# ---------------------------------------------------------------------------
+# Kafka Stream Feature Store — local development environment
+# ---------------------------------------------------------------------------
+# Services:
+#   zookeeper   — Kafka coordination
+#   kafka       — Message broker (features.raw topic)
+#   redis       — Serving layer / hot feature store
+#   postgres    — Feature registry (feature_definitions table)
+#   api         — FastAPI serving layer (port 8000)
+#   consumer    — Kafka consumer daemon
+# ---------------------------------------------------------------------------
+
+services:
+
+  # --------------------------------------------------------------------------
+  # Zookeeper — required by Kafka 3.x in KRaft-off mode
+  # --------------------------------------------------------------------------
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.3.0
+    container_name: feature-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - feature-net
+
+  # --------------------------------------------------------------------------
+  # Kafka broker
+  # --------------------------------------------------------------------------
+  kafka:
+    image: confluentinc/cp-kafka:7.3.0
+    container_name: feature-kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 24
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    networks:
+      - feature-net
+
+  # --------------------------------------------------------------------------
+  # Redis — feature serving layer
+  # --------------------------------------------------------------------------
+  redis:
+    image: redis:7.0-alpine
+    container_name: feature-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - feature-net
+
+  # --------------------------------------------------------------------------
+  # PostgreSQL — feature registry
+  # --------------------------------------------------------------------------
+  postgres:
+    image: postgres:14-alpine
+    container_name: feature-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: featurestore
+      POSTGRES_PASSWORD: featurestore
+      POSTGRES_DB: featurestore
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U featurestore -d featurestore"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - feature-net
+
+  # --------------------------------------------------------------------------
+  # FastAPI serving layer
+  # --------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: feature-api
+    command: uvicorn feature_store.serving:app --host 0.0.0.0 --port 8000 --workers 2
+    ports:
+      - "8000:8000"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KAFKA_FEATURE_TOPIC: features.raw
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      DATABASE_URL: postgresql://featurestore:featurestore@postgres:5432/featurestore
+      MONITOR_INTERVAL_SECONDS: 15
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - feature-net
+
+  # --------------------------------------------------------------------------
+  # Kafka consumer daemon
+  # --------------------------------------------------------------------------
+  consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: feature-consumer
+    command: python -m feature_store.consumer
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KAFKA_FEATURE_TOPIC: features.raw
+      KAFKA_CONSUMER_GROUP: feature-store-consumer
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      DATABASE_URL: postgresql://featurestore:featurestore@postgres:5432/featurestore
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - feature-net
+
+# --------------------------------------------------------------------------
+# Volumes and networks
+# --------------------------------------------------------------------------
+volumes:
+  redis-data:
+  postgres-data:
+
+networks:
+  feature-net:
+    driver: bridge
