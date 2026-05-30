@@ -193,7 +193,11 @@ class FeatureMonitor:
                     ts = ts.replace(tzinfo=timezone.utc)
                 age_seconds = (now - ts).total_seconds()
                 if age_seconds > defn.expected_freshness_seconds:
-                    entity_id = key.split(":")[1]
+                    # Key format is "feature:{entity_id}:{feature_name}".
+                    # Use a fixed split with maxsplit=2 to correctly handle
+                    # the prefix and suffix regardless of entity_id content.
+                    parts = key.split(":", 2)
+                    entity_id = parts[1] if len(parts) >= 2 else key
                     stale_entities.append(entity_id)
             except (KeyError, ValueError, json.JSONDecodeError) as exc:
                 logger.debug("Could not parse feature key", extra={"key": key, "error": str(exc)})

@@ -292,3 +292,55 @@ class TestRegistry:
         }
         response = await client.post("/registry", json=payload)
         assert response.status_code == 409
+
+
+# ---------------------------------------------------------------------------
+# Input validation — entity_id and feature_name rejection
+# ---------------------------------------------------------------------------
+
+class TestInputValidation:
+    """Verify that malformed entity_ids and feature_names are rejected."""
+
+    @pytest.mark.asyncio
+    async def test_entity_id_with_colon_returns_400(self, client):
+        """Colons in entity_id would pollute the Redis key structure."""
+        response = await client.get("/features/customer:001")
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_entity_id_with_crlf_returns_400(self, client):
+        """CRLF sequences in entity_id are a RESP protocol injection attempt."""
+        response = await client.get("/features/bad%0d%0aFLUSHALL")
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_entity_id_too_long_returns_400(self, client):
+        response = await client.get(f"/features/{'a' * 129}")
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_valid_entity_id_passes(self, client):
+        response = await client.get("/features/customer-001.test_user")
+        assert response.status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_feature_name_with_colon_returns_400(self, client):
+        response = await client.get("/features/cust_001/bad:feature")
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_feature_name_uppercase_returns_400(self, client):
+        """Feature names must be lowercase snake_case."""
+        response = await client.get("/features/cust_001/BadFeature")
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_feature_name_too_long_returns_400(self, client):
+        response = await client.get(f"/features/cust_001/{'a' * 65}")
+        assert response.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_valid_feature_name_passes(self, client, fake_redis):
+        put_feature_in_redis(fake_redis, "cust_001", "rolling_7d_spend", 10.0)
+        response = await client.get("/features/cust_001/rolling_7d_spend")
+        assert response.status_code == 200
