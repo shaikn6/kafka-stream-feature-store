@@ -1,9 +1,13 @@
-> 🔒 **Private Repository** — Source code available on request for verified employers and collaborators.
-> 📧 Contact: shaikn6@udayton.edu | [LinkedIn](https://linkedin.com/in/nagizaazshaik)
 
 ---
 
 # kafka-stream-feature-store
+
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-22c55e)
+![Tests](https://img.shields.io/badge/Tests-passing-22c55e)
+![Stack](https://img.shields.io/badge/Stack-Kafka-6366f1)
+
 
 [![CI](https://github.com/shaikn6/kafka-stream-feature-store/actions/workflows/ci.yml/badge.svg)](https://github.com/shaikn6/kafka-stream-feature-store/actions/workflows/ci.yml)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)](https://www.python.org/downloads/)
@@ -17,6 +21,16 @@ Ingests feature events via Apache Kafka, materialises them into Redis with TTL-b
 freshness guarantees, and exposes a FastAPI serving layer with per-feature SLA monitoring.
 
 **Achieved 45-second average feature freshness vs. 24-hour batch baseline.**
+
+## Quick Start
+
+```bash
+git clone https://github.com/shaikn6/kafka-stream-feature-store.git
+cd kafka-stream-feature-store
+pip install -r requirements.txt
+pytest tests/                    # run test suite
+streamlit run dashboard/app_v2.py    # launch dashboard
+```
 
 ## Screenshots
 
