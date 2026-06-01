@@ -13,18 +13,17 @@ import pytest
 
 pyspark = pytest.importorskip("pyspark", reason="pyspark not installed")
 
-from pyspark.sql import SparkSession, functions as F
-from pyspark.sql.types import (
+from pyspark.sql import SparkSession, functions as F  # noqa: E402
+from pyspark.sql.types import (  # noqa: E402
     DateType,
     DoubleType,
-    IntegerType,
     StringType,
     StructField,
     StructType,
 )
 
 # Import after pyspark check
-from spark.feature_pipeline import (
+from spark.feature_pipeline import (  # noqa: E402
     compute_anomaly_scores,
     compute_merchant_category_features,
     compute_rfm,
@@ -58,18 +57,16 @@ def spark():
 # ---------------------------------------------------------------------------
 
 _TXN_SCHEMA = StructType([
-    StructField("user_id",           StringType(),  True),
-    StructField("txn_id",            StringType(),  True),
-    StructField("merchant_category", StringType(),  True),
-    StructField("amount",            DoubleType(),  True),
-    StructField("event_date",        DateType(),    True),
+    StructField("user_id", StringType(), True),
+    StructField("txn_id", StringType(), True),
+    StructField("merchant_category", StringType(), True),
+    StructField("amount", DoubleType(), True),
+    StructField("event_date", DateType(), True),
 ])
 
 
 def _make_txn_df(spark, rows):
     """Create a transaction DataFrame from list-of-tuples."""
-    from datetime import date
-
     data = []
     for user_id, txn_id, merchant_category, amount, event_date in rows:
         data.append((user_id, txn_id, merchant_category, float(amount), event_date))
@@ -86,7 +83,7 @@ class TestRolling7dSpend:
         from datetime import date
         txn = _make_txn_df(spark, [
             ("u1", "t1", "grocery", 100.0, date(2024, 1, 10)),
-            ("u1", "t2", "grocery",  50.0, date(2024, 1, 12)),
+            ("u1", "t2", "grocery", 50.0, date(2024, 1, 12)),
         ])
         result = compute_rolling_7d_spend(spark, txn)
         for col in ("user_id", "txn_id", "event_date", "rolling_7d_spend_avg"):
@@ -130,7 +127,7 @@ class TestMerchantCategoryFeatures:
         txn = _make_txn_df(spark, [
             ("u1", "t1", "grocery", 10.0, date(2024, 1, 1)),
             ("u1", "t2", "grocery", 10.0, date(2024, 1, 2)),
-            ("u1", "t3", "dining",  10.0, date(2024, 1, 3)),
+            ("u1", "t3", "dining", 10.0, date(2024, 1, 3)),
         ])
         result = compute_merchant_category_features(txn)
         for col in ("user_id", "top_merchant_category", "merchant_category_count"):
@@ -141,7 +138,7 @@ class TestMerchantCategoryFeatures:
         txn = _make_txn_df(spark, [
             ("u1", "t1", "grocery", 10.0, date(2024, 1, 1)),
             ("u1", "t2", "grocery", 10.0, date(2024, 1, 2)),
-            ("u1", "t3", "dining",  10.0, date(2024, 1, 3)),
+            ("u1", "t3", "dining", 10.0, date(2024, 1, 3)),
         ])
         result = compute_merchant_category_features(txn)
         row = result.filter(F.col("user_id") == "u1").collect()[0]
@@ -152,8 +149,8 @@ class TestMerchantCategoryFeatures:
         from datetime import date
         txn = _make_txn_df(spark, [
             ("u1", "t1", "grocery", 10.0, date(2024, 1, 1)),
-            ("u2", "t2", "dining",  20.0, date(2024, 1, 2)),
-            ("u1", "t3", "retail",  30.0, date(2024, 1, 3)),
+            ("u2", "t2", "dining", 20.0, date(2024, 1, 2)),
+            ("u1", "t3", "retail", 30.0, date(2024, 1, 3)),
         ])
         result = compute_merchant_category_features(txn)
         assert result.count() == 2   # one row per distinct user
@@ -162,7 +159,7 @@ class TestMerchantCategoryFeatures:
         from datetime import date
         txn = _make_txn_df(spark, [
             ("u1", "t1", "grocery", 10.0, date(2024, 1, 1)),
-            ("u1", "t2", "dining",  10.0, date(2024, 1, 2)),
+            ("u1", "t2", "dining", 10.0, date(2024, 1, 2)),
         ])
         result = compute_merchant_category_features(txn)
         # Should still produce one row
@@ -197,8 +194,8 @@ class TestAnomalyScores:
         """A high-value txn should produce a positive z-score."""
         from datetime import date
         txn = _make_txn_df(spark, [
-            ("u1", "t1", "grocery",  10.0, date(2024, 1, 1)),
-            ("u1", "t2", "grocery",  10.0, date(2024, 1, 2)),
+            ("u1", "t1", "grocery", 10.0, date(2024, 1, 1)),
+            ("u1", "t2", "grocery", 10.0, date(2024, 1, 2)),
             ("u1", "t3", "grocery", 500.0, date(2024, 1, 3)),   # outlier
         ])
         result = compute_anomaly_scores(txn)
@@ -233,9 +230,9 @@ class TestRFM:
     def test_frequency_count(self, spark):
         from datetime import date
         txn = _make_txn_df(spark, [
-            ("u1", "t1", "grocery",  50.0, date(2024, 1, 1)),
-            ("u1", "t2", "dining",   30.0, date(2024, 1, 5)),
-            ("u1", "t3", "retail",   70.0, date(2024, 1, 10)),
+            ("u1", "t1", "grocery", 50.0, date(2024, 1, 1)),
+            ("u1", "t2", "dining", 30.0, date(2024, 1, 5)),
+            ("u1", "t3", "retail", 70.0, date(2024, 1, 10)),
         ])
         result = compute_rfm(txn, reference_date=date(2024, 2, 1))
         row = result.filter(F.col("user_id") == "u1").collect()[0]
@@ -244,8 +241,8 @@ class TestRFM:
     def test_monetary_sum(self, spark):
         from datetime import date
         txn = _make_txn_df(spark, [
-            ("u1", "t1", "grocery",  50.0, date(2024, 1, 1)),
-            ("u1", "t2", "dining",   30.0, date(2024, 1, 5)),
+            ("u1", "t1", "grocery", 50.0, date(2024, 1, 1)),
+            ("u1", "t2", "dining", 30.0, date(2024, 1, 5)),
         ])
         result = compute_rfm(txn, reference_date=date(2024, 2, 1))
         row = result.filter(F.col("user_id") == "u1").collect()[0]
@@ -266,8 +263,8 @@ class TestRFM:
         from datetime import date
         txn = _make_txn_df(spark, [
             ("u1", "t1", "grocery", 10.0, date(2024, 1, 1)),
-            ("u2", "t2", "dining",  20.0, date(2024, 1, 2)),
-            ("u1", "t3", "retail",  30.0, date(2024, 1, 3)),
+            ("u2", "t2", "dining", 20.0, date(2024, 1, 2)),
+            ("u1", "t3", "retail", 30.0, date(2024, 1, 3)),
         ])
         result = compute_rfm(txn, reference_date=date(2024, 2, 1))
         assert result.count() == 2
