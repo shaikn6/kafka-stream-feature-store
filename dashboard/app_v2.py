@@ -14,14 +14,12 @@ Run::
 
 from __future__ import annotations
 
-import json
 import os
 import random
-import sys
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Streamlit import guard
@@ -33,6 +31,7 @@ try:
 except ImportError:
     HAS_STREAMLIT = False
     # Allow import in test environments without Streamlit
+
     class _StubST:
         def __getattr__(self, name):
             def _noop(*a, **kw):
@@ -75,11 +74,11 @@ def _mock_stream_stats() -> dict[str, Any]:
 
 def _mock_spark_stages() -> list[dict[str, Any]]:
     return [
-        {"stage": "Generate 5M rows",         "status": "COMPLETE", "duration_s": 12.4},
-        {"stage": "Rolling 7d spend avg",      "status": "COMPLETE", "duration_s": 8.7},
-        {"stage": "Merchant category freq",    "status": "COMPLETE", "duration_s": 6.1},
-        {"stage": "Anomaly scores (z-score)",  "status": "COMPLETE", "duration_s": 9.3},
-        {"stage": "RFM computation",           "status": "COMPLETE", "duration_s": 5.8},
+        {"stage": "Generate 5M rows", "status": "COMPLETE", "duration_s": 12.4},
+        {"stage": "Rolling 7d spend avg", "status": "COMPLETE", "duration_s": 8.7},
+        {"stage": "Merchant category freq", "status": "COMPLETE", "duration_s": 6.1},
+        {"stage": "Anomaly scores (z-score)", "status": "COMPLETE", "duration_s": 9.3},
+        {"stage": "RFM computation", "status": "COMPLETE", "duration_s": 5.8},
         {"stage": "Write partitioned Parquet", "status": "COMPLETE", "duration_s": 14.2},
     ]
 
@@ -88,14 +87,14 @@ def _mock_user_features(user_id: str) -> dict[str, Any]:
     rng = random.Random(hash(user_id) % (2**32))
     return {
         "user_id": user_id,
-        "rolling_7d_spend_avg":    round(rng.uniform(50, 800), 2),
-        "top_merchant_category":   rng.choice(["grocery", "dining", "travel", "retail"]),
+        "rolling_7d_spend_avg": round(rng.uniform(50, 800), 2),
+        "top_merchant_category": rng.choice(["grocery", "dining", "travel", "retail"]),
         "merchant_category_count": rng.randint(5, 200),
-        "anomaly_score":           round(rng.gauss(0, 1), 4),
-        "recency_days":            rng.randint(0, 30),
-        "frequency":               rng.randint(1, 500),
-        "monetary":                round(rng.uniform(100, 15000), 2),
-        "query_ms":                round(rng.uniform(12, 80), 1),
+        "anomaly_score": round(rng.gauss(0, 1), 4),
+        "recency_days": rng.randint(0, 30),
+        "frequency": rng.randint(1, 500),
+        "monetary": round(rng.uniform(100, 15000), 2),
+        "query_ms": round(rng.uniform(12, 80), 1),
     }
 
 
@@ -103,7 +102,7 @@ def _mock_snapshots() -> list[dict[str, Any]]:
     base = datetime.utcnow()
     return [
         {
-            "snapshot_id": f"snap_{i+1:03d}",
+            "snapshot_id": f"snap_{i + 1:03d}",
             "label": ["initial-load", "day-1-update", "weekly-refresh", "hotfix-recompute", "v2-features"][i % 5],
             "created_at": (base - timedelta(days=4 - i)).isoformat(),
             "row_count": 4_800_000 + i * 50_000,
@@ -120,7 +119,6 @@ def _mock_snapshots() -> list[dict[str, Any]]:
 
 def _query_user_features_live(user_id: str) -> dict[str, Any]:
     try:
-        import duckdb
         parquet_files = list(_FEATURES_DIR.glob("**/*.parquet"))
         if not parquet_files:
             raise FileNotFoundError("No Parquet files found")
@@ -221,7 +219,7 @@ def _render_tab_spark() -> None:
             for i, stage in enumerate(stages):
                 frac = (i + 1) / len(stages)
                 progress.progress(frac, text=f"Running: {stage['stage']} …")
-                status.info(f"Stage {i+1}/{len(stages)}: {stage['stage']}")
+                status.info(f"Stage {i + 1}/{len(stages)}: {stage['stage']}")
                 time.sleep(0.4)
             progress.progress(1.0, text="Complete!")
             status.success(f"Pipeline done — {n_rows:,} rows written to {output_path}")

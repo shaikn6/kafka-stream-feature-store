@@ -6,9 +6,6 @@ so no Parquet files or Spark are required.
 
 from __future__ import annotations
 
-import json
-import time
-from unittest.mock import MagicMock, patch
 
 import pytest
 

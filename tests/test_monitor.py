@@ -6,10 +6,8 @@ Uses fakeredis for Redis and an in-memory registry stub.
 from __future__ import annotations
 
 import json
-import time
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional
-from unittest.mock import MagicMock
+from typing import Dict, List
 
 import fakeredis
 import pytest

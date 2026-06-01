@@ -12,8 +12,6 @@ Run::
 
 from __future__ import annotations
 
-import math
-import random
 import sys
 from pathlib import Path
 
@@ -36,16 +34,17 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 # Palette
 # ---------------------------------------------------------------------------
 
-BG      = "#0D1117"
+BG = "#0D1117"
 SURFACE = "#161B22"
-CARD    = "#1C2128"
-ACCENT  = "#58A6FF"
-GREEN   = "#3FB950"
-ORANGE  = "#F78166"
-PURPLE  = "#BC8CFF"
-YELLOW  = "#E3B341"
-MUTED   = "#8B949E"
-TEXT    = "#C9D1D9"
+CARD = "#1C2128"
+ACCENT = "#58A6FF"
+GREEN = "#3FB950"
+ORANGE = "#F78166"
+PURPLE = "#BC8CFF"
+YELLOW = "#E3B341"
+MUTED = "#8B949E"
+TEXT = "#C9D1D9"
+
 
 def _style_ax(ax, title="", xlabel="", ylabel=""):
     ax.set_facecolor(SURFACE)
@@ -105,7 +104,6 @@ def gen_spark_pipeline():
     ax2.set_facecolor(SURFACE)
 
     rng = np.random.default_rng(42)
-    dates = [f"2024-{((i // 30) + 1):02d}-{(i % 30 + 1):02d}" for i in range(30)]
     counts = rng.integers(145_000, 175_000, size=30)
     ax2.bar(range(30), counts / 1000, color=ACCENT, alpha=0.75, width=0.8)
     ax2.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:.0f}K"))
@@ -131,22 +129,21 @@ def gen_spark_pipeline():
 def gen_duckdb_benchmark():
     fig, axes = plt.subplots(1, 2, figsize=(12, 5.5), facecolor=BG)
 
-    row_counts = [1_000_000, 5_000_000, 10_000_000]
     labels = ["1M", "5M", "10M"]
 
     # Full scan timings
-    full_scan   = [38, 182, 365]
-    top_k       = [65, 308, 615]
-    drift_summ  = [90, 425, 848]
+    full_scan = [38, 182, 365]
+    top_k = [65, 308, 615]
+    drift_summ = [90, 425, 848]
 
     x = np.arange(len(labels))
     w = 0.26
 
     ax = axes[0]
     ax.set_facecolor(SURFACE)
-    ax.bar(x - w, full_scan,  width=w, color=ACCENT,  alpha=0.85, label="Full scan")
-    ax.bar(x,     top_k,      width=w, color=GREEN,   alpha=0.85, label="Top-100 query")
-    ax.bar(x + w, drift_summ, width=w, color=PURPLE,  alpha=0.85, label="Drift summary")
+    ax.bar(x - w, full_scan, width=w, color=ACCENT, alpha=0.85, label="Full scan")
+    ax.bar(x, top_k, width=w, color=GREEN, alpha=0.85, label="Top-100 query")
+    ax.bar(x + w, drift_summ, width=w, color=PURPLE, alpha=0.85, label="Drift summary")
     ax.axhline(1000, color=ORANGE, linestyle="--", linewidth=1.5, label="1s target")
     ax.set_xticks(x)
     ax.set_xticklabels(labels, color=TEXT, fontsize=9)
@@ -160,9 +157,9 @@ def gen_duckdb_benchmark():
 
     table_data = [
         ["Dataset", "Full scan", "Top-100", "Drift summary"],
-        ["1M rows",   "38ms",     "65ms",    "90ms"],
-        ["5M rows",  "182ms",    "308ms",   "425ms"],
-        ["10M rows", "365ms",    "615ms",   "848ms"],
+        ["1M rows", "38ms", "65ms", "90ms"],
+        ["5M rows", "182ms", "308ms", "425ms"],
+        ["10M rows", "365ms", "615ms", "848ms"],
     ]
     col_widths = [0.22, 0.22, 0.22, 0.28]
     row_heights = 0.18
@@ -212,24 +209,24 @@ def gen_feature_drift():
         "anomaly_score",
         "merchant_category_count",
     ]
-    snapshot_labels = [f"Snap {i+1}" for i in range(5)]
+    snapshot_labels = [f"Snap {i + 1}" for i in range(5)]
 
     rng = np.random.default_rng(7)
 
     base_means = {
         "rolling_7d_spend_avg": 250.0,
-        "monetary":             3500.0,
-        "frequency":            95.0,
-        "recency_days":         8.5,
-        "anomaly_score":        0.05,
+        "monetary": 3500.0,
+        "frequency": 95.0,
+        "recency_days": 8.5,
+        "anomaly_score": 0.05,
         "merchant_category_count": 52.0,
     }
     base_stds = {
         "rolling_7d_spend_avg": 80.0,
-        "monetary":             1200.0,
-        "frequency":            35.0,
-        "recency_days":         4.2,
-        "anomaly_score":        0.9,
+        "monetary": 1200.0,
+        "frequency": 35.0,
+        "recency_days": 4.2,
+        "anomaly_score": 0.9,
         "merchant_category_count": 18.0,
     }
 
@@ -238,8 +235,8 @@ def gen_feature_drift():
         drift_factor = rng.uniform(-0.05, 0.12)
         means = [base_means[feat] * (1 + i * drift_factor * 0.15) + rng.normal(0, base_stds[feat] * 0.03)
                  for i in range(5)]
-        stds  = [base_stds[feat] * (1 + i * 0.02) + rng.normal(0, base_stds[feat] * 0.01)
-                 for i in range(5)]
+        stds = [base_stds[feat] * (1 + i * 0.02) + rng.normal(0, base_stds[feat] * 0.01)
+                for i in range(5)]
 
         x = np.arange(5)
         ax.plot(x, means, color=ACCENT, marker="o", linewidth=1.8, markersize=5, label="mean")
@@ -312,7 +309,7 @@ def gen_windowed_agg():
     ax4 = axes[1][1]
     ax4.set_facecolor(SURFACE)
     scenarios = ["100K events", "500K events", "1M events"]
-    eps_vals  = [142_000, 138_000, 133_000]
+    eps_vals = [142_000, 138_000, 133_000]
     colors = [GREEN if v >= 100_000 else ORANGE for v in eps_vals]
     bars = ax4.bar(range(3), [v / 1000 for v in eps_vals], color=colors, alpha=0.85, width=0.5)
     ax4.axhline(100, color=ORANGE, linestyle="--", linewidth=1.3, label="100K/s target")

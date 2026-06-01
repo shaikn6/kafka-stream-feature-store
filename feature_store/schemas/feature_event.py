@@ -2,9 +2,8 @@
 
 from datetime import datetime
 from typing import Any, Dict, Optional, Union
-import json
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class FeatureEvent(BaseModel):

@@ -21,10 +21,8 @@ from __future__ import annotations
 
 import argparse
 import logging
-import os
-import sys
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -32,6 +30,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Spark session factory
 # ---------------------------------------------------------------------------
+
 
 def _build_spark(app_name: str = "FeaturePipelineV2"):
     """Create a local-mode SparkSession (no cluster required)."""
@@ -172,7 +171,7 @@ def compute_anomaly_scores(txn_df):
     with_stats = (
         txn_df
         .withColumn("user_mean", F.avg("amount").over(w))
-        .withColumn("user_std",  F.stddev("amount").over(w))
+        .withColumn("user_std", F.stddev("amount").over(w))
     )
     # Avoid division by zero for users with a single transaction
     anomaly = with_stats.withColumn(
@@ -235,8 +234,6 @@ def run_pipeline(output_path: str = "features", n_rows: int = 5_000_000) -> dict
     -------
     dict with execution metadata (row counts, elapsed, schema).
     """
-    from pyspark.sql import functions as F
-
     spark = _build_spark()
     t_start = time.perf_counter()
 
@@ -244,10 +241,10 @@ def run_pipeline(output_path: str = "features", n_rows: int = 5_000_000) -> dict
     txn_df = generate_transactions(spark)
 
     # ---- 2. Feature computations --------------------------------------------
-    rolling_df  = compute_rolling_7d_spend(spark, txn_df)
-    cat_df      = compute_merchant_category_features(txn_df)
-    anomaly_df  = compute_anomaly_scores(txn_df)
-    rfm_df      = compute_rfm(txn_df)
+    rolling_df = compute_rolling_7d_spend(spark, txn_df)
+    cat_df = compute_merchant_category_features(txn_df)
+    anomaly_df = compute_anomaly_scores(txn_df)
+    rfm_df = compute_rfm(txn_df)
 
     # ---- 3. Join all features into a single wide table ----------------------
     logger.info("Joining feature tables …")
@@ -256,8 +253,8 @@ def run_pipeline(output_path: str = "features", n_rows: int = 5_000_000) -> dict
     features_df = (
         rolling_df
         .join(anomaly_df, on=["user_id", "txn_id", "event_date"], how="inner")
-        .join(cat_df,     on="user_id",                            how="left")
-        .join(rfm_df,     on="user_id",                            how="left")
+        .join(cat_df, on="user_id", how="left")
+        .join(rfm_df, on="user_id", how="left")
     )
 
     # ---- 4. Write partitioned Parquet ---------------------------------------

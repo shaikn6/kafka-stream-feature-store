@@ -9,6 +9,8 @@ Usage:
 """
 
 from __future__ import annotations
+from feature_store.schemas.feature_event import FeatureEvent
+from feature_store.producer import FeatureProducer, ensure_topic_exists
 
 import argparse
 import logging
@@ -21,8 +23,6 @@ from pathlib import Path
 # Allow running from repo root
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from feature_store.producer import FeatureProducer, ensure_topic_exists
-from feature_store.schemas.feature_event import FeatureEvent
 
 logging.basicConfig(
     level=logging.INFO,
@@ -63,7 +63,7 @@ def run(num_events: int = 1000, rate_per_sec: int = 10) -> None:
 
     logger.info(
         f"Starting simulation: {num_events} events at {rate_per_sec}/sec "
-        f"(estimated duration: {num_events/rate_per_sec:.1f}s)"
+        f"(estimated duration: {num_events / rate_per_sec:.1f}s)"
     )
 
     # Ensure topic exists before producing
@@ -88,7 +88,7 @@ def run(num_events: int = 1000, rate_per_sec: int = 10) -> None:
                 elapsed = time.monotonic() - start_time
                 actual_rate = published / elapsed if elapsed > 0 else 0
                 logger.info(
-                    f"Progress: {i+1}/{num_events} events "
+                    f"Progress: {i + 1}/{num_events} events "
                     f"| rate: {actual_rate:.1f}/s "
                     f"| elapsed: {elapsed:.1f}s"
                 )
@@ -100,7 +100,7 @@ def run(num_events: int = 1000, rate_per_sec: int = 10) -> None:
     elapsed_total = time.monotonic() - start_time
     logger.info(
         f"Simulation complete: {published} published, {failed} failed "
-        f"in {elapsed_total:.2f}s ({published/elapsed_total:.1f} events/sec)"
+        f"in {elapsed_total:.2f}s ({published / elapsed_total:.1f} events/sec)"
     )
 
     if published > 0:

@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 import redis
-from fastapi import FastAPI, HTTPException, Path, status
+from fastapi import FastAPI, HTTPException, status
 
 from feature_store.monitor import FeatureMonitor
 from feature_store.registry import FeatureRegistry
@@ -59,6 +59,7 @@ def _validate_feature_name(feature_name: str) -> str:
             ),
         )
     return feature_name
+
 
 logger = logging.getLogger(__name__)
 
