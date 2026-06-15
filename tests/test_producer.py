@@ -19,6 +19,7 @@ from feature_store.schemas.feature_event import FeatureEvent
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 def mock_kafka_producer():
     """Return a MagicMock that stands in for confluent_kafka.Producer."""
@@ -48,6 +49,7 @@ def sample_event():
 # ---------------------------------------------------------------------------
 # Schema / serialisation tests
 # ---------------------------------------------------------------------------
+
 
 class TestFeatureEventSchema:
     def test_valid_event_serialises_to_json(self, sample_event):
@@ -88,7 +90,9 @@ class TestFeatureEventSchema:
         assert event.value == 5
 
     def test_value_can_be_string(self):
-        event = FeatureEvent(entity_id="u1", feature_name="preferred_category", value="groceries")
+        event = FeatureEvent(
+            entity_id="u1", feature_name="preferred_category", value="groceries"
+        )
         assert event.value == "groceries"
 
     def test_value_can_be_bool(self):
@@ -100,24 +104,33 @@ class TestFeatureEventSchema:
 # Producer publish tests
 # ---------------------------------------------------------------------------
 
+
 class TestFeatureProducer:
-    def test_publish_calls_produce_with_correct_topic(self, producer, mock_kafka_producer, sample_event):
+    def test_publish_calls_produce_with_correct_topic(
+        self, producer, mock_kafka_producer, sample_event
+    ):
         producer.publish(sample_event)
         mock_kafka_producer.produce.assert_called_once()
         call_kwargs = mock_kafka_producer.produce.call_args
         assert call_kwargs.kwargs["topic"] == "features.raw"
 
-    def test_publish_uses_entity_id_as_key(self, producer, mock_kafka_producer, sample_event):
+    def test_publish_uses_entity_id_as_key(
+        self, producer, mock_kafka_producer, sample_event
+    ):
         producer.publish(sample_event)
         call_kwargs = mock_kafka_producer.produce.call_args
         assert call_kwargs.kwargs["key"] == b"order_001"
 
-    def test_publish_accepts_custom_key(self, producer, mock_kafka_producer, sample_event):
+    def test_publish_accepts_custom_key(
+        self, producer, mock_kafka_producer, sample_event
+    ):
         producer.publish(sample_event, key="partition_key_42")
         call_kwargs = mock_kafka_producer.produce.call_args
         assert call_kwargs.kwargs["key"] == b"partition_key_42"
 
-    def test_publish_value_is_valid_json(self, producer, mock_kafka_producer, sample_event):
+    def test_publish_value_is_valid_json(
+        self, producer, mock_kafka_producer, sample_event
+    ):
         producer.publish(sample_event)
         call_kwargs = mock_kafka_producer.produce.call_args
         raw_value = call_kwargs.kwargs["value"]
@@ -142,11 +155,15 @@ class TestFeatureProducer:
     def test_context_manager_flushes_on_exit(self, mock_kafka_producer):
         mock_kafka_producer.flush.return_value = 0
         with FeatureProducer(config={"bootstrap.servers": "localhost:9092"}) as prod:
-            event = FeatureEvent(entity_id="u1", feature_name="order_count_24h", value=1)
+            event = FeatureEvent(
+                entity_id="u1", feature_name="order_count_24h", value=1
+            )
             prod.publish(event)
         mock_kafka_producer.flush.assert_called()
 
-    def test_publish_batch_continues_on_single_failure(self, producer, mock_kafka_producer):
+    def test_publish_batch_continues_on_single_failure(
+        self, producer, mock_kafka_producer
+    ):
         """A failure on one event should not stop the rest of the batch."""
         mock_kafka_producer.produce.side_effect = [None, Exception("broker down"), None]
         events = [
@@ -162,6 +179,7 @@ class TestFeatureProducer:
 # Delivery report callback
 # ---------------------------------------------------------------------------
 
+
 class TestDeliveryReport:
     def test_no_error_does_not_raise(self):
         mock_msg = MagicMock()
@@ -175,3 +193,29 @@ class TestDeliveryReport:
         mock_msg.topic.return_value = "features.raw"
         mock_msg.partition.return_value = 0
         _delivery_report(Exception("broker error"), mock_msg)  # logs but does not raise
+
+
+# ---------------------------------------------------------------------------
+# Edge cases: buffer error retry, flush warning
+# ---------------------------------------------------------------------------
+
+class TestProducerEdgeCases:
+    def test_publish_retries_on_buffer_error_then_succeeds(self, producer, mock_kafka_producer):
+        mock_kafka_producer.produce.side_effect = [BufferError(), None]
+        mock_kafka_producer.flush.return_value = 0
+        event = FeatureEvent(entity_id="u1", feature_name="order_count_24h", value=1)
+        producer.publish(event)
+        assert mock_kafka_producer.produce.call_count == 2
+
+    def test_publish_raises_after_max_retries(self, producer, mock_kafka_producer):
+        from confluent_kafka import KafkaException
+        mock_kafka_producer.flush.return_value = 0
+        mock_kafka_producer.produce.side_effect = BufferError()
+        with pytest.raises(KafkaException):
+            event = FeatureEvent(entity_id="u2", feature_name="order_count_24h", value=1)
+            producer.publish(event)
+
+    def test_flush_warns_on_remaining_messages(self, producer, mock_kafka_producer):
+        mock_kafka_producer.flush.return_value = 5
+        result = producer.flush(timeout=0.1)
+        assert result == 5

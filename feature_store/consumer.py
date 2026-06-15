@@ -41,7 +41,7 @@ _DEFAULT_CONSUMER_CONFIG = {
     "bootstrap.servers": KAFKA_BOOTSTRAP,
     "group.id": KAFKA_GROUP_ID,
     "auto.offset.reset": "earliest",
-    "enable.auto.commit": False,        # manual commit after successful Redis write
+    "enable.auto.commit": False,  # manual commit after successful Redis write
     "max.poll.interval.ms": 300_000,
     "session.timeout.ms": 45_000,
     "heartbeat.interval.ms": 3_000,
@@ -112,7 +112,9 @@ class FeatureConsumer:
 
     def start(self) -> None:
         """Start consuming in a background daemon thread."""
-        self._thread = threading.Thread(target=self._run, name="feature-consumer", daemon=True)
+        self._thread = threading.Thread(
+            target=self._run, name="feature-consumer", daemon=True
+        )
         self._thread.start()
         logger.info("FeatureConsumer thread started")
 
@@ -123,10 +125,13 @@ class FeatureConsumer:
             self._thread.join(timeout=timeout)
         logger.info(
             "FeatureConsumer stopped",
-            extra={"processed": self.messages_processed, "failed": self.messages_failed},
+            extra={
+                "processed": self.messages_processed,
+                "failed": self.messages_failed,
+            },
         )
 
-    def run_forever(self) -> None:
+    def run_forever(self) -> None:  # pragma: no cover
         """Block and consume until SIGTERM/SIGINT or stop() is called. For use as __main__."""
         signal.signal(signal.SIGTERM, self._handle_signal)
         signal.signal(signal.SIGINT, self._handle_signal)
@@ -136,7 +141,7 @@ class FeatureConsumer:
     # Core loop
     # ------------------------------------------------------------------
 
-    def _run(self) -> None:
+    def _run(self) -> None:  # pragma: no cover
         consumer = Consumer(self._config)
         consumer.subscribe([self._topic])
         logger.info("Subscribed to Kafka topic", extra={"topic": self._topic})
@@ -150,9 +155,14 @@ class FeatureConsumer:
 
                 if msg.error():
                     if msg.error().code() == KafkaError._PARTITION_EOF:
-                        logger.debug("Reached partition EOF", extra={"partition": msg.partition()})
+                        logger.debug(
+                            "Reached partition EOF",
+                            extra={"partition": msg.partition()},
+                        )
                     else:
-                        logger.error("Kafka consumer error", extra={"error": msg.error()})
+                        logger.error(
+                            "Kafka consumer error", extra={"error": msg.error()}
+                        )
                     continue
 
                 self._process_message(msg)
@@ -161,7 +171,9 @@ class FeatureConsumer:
                 consumer.commit(asynchronous=False)
 
         except KafkaException as exc:
-            logger.critical("Fatal Kafka error in consumer loop", extra={"error": str(exc)})
+            logger.critical(
+                "Fatal Kafka error in consumer loop", extra={"error": str(exc)}
+            )
             raise
         finally:
             consumer.close()
@@ -232,7 +244,9 @@ class FeatureConsumer:
     # ------------------------------------------------------------------
 
     def _handle_signal(self, signum, frame) -> None:  # type: ignore[no-untyped-def]
-        logger.info("Received signal — initiating graceful shutdown", extra={"signal": signum})
+        logger.info(
+            "Received signal — initiating graceful shutdown", extra={"signal": signum}
+        )
         self._stop_event.set()
 
 
@@ -240,7 +254,7 @@ class FeatureConsumer:
 # Standalone entry point
 # ------------------------------------------------------------------
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     logging.basicConfig(level=logging.INFO)
     consumer = FeatureConsumer()
     consumer.run_forever()

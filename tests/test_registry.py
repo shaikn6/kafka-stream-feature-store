@@ -181,3 +181,10 @@ class TestFeatureRegistryUpsert:
 class TestFeatureRegistryPing:
     def test_ping_returns_true(self, registry):
         assert registry.ping() is True
+
+
+class TestFeatureRegistryPingException:
+    def test_ping_returns_false_on_engine_error(self, registry):
+        from unittest.mock import patch
+        with patch.object(registry._engine, "connect", side_effect=Exception("conn failed")):
+            assert registry.ping() is False

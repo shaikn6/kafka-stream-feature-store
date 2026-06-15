@@ -226,3 +226,32 @@ class TestLifecycle:
         consumer._stop_event.clear()
         consumer.stop(timeout=0.1)
         assert consumer._stop_event.is_set()
+
+    def test_start_creates_daemon_thread(self, consumer):
+        from unittest.mock import patch
+        import threading
+        with patch("feature_store.consumer.threading.Thread") as mock_thread_cls:
+            mock_thread = MagicMock()
+            mock_thread_cls.return_value = mock_thread
+            consumer.start()
+        assert consumer._thread is mock_thread
+        mock_thread.start.assert_called_once()
+
+    def test_stop_joins_alive_thread(self, consumer):
+        mock_thread = MagicMock()
+        mock_thread.is_alive.return_value = True
+        consumer._thread = mock_thread
+        consumer.stop(timeout=0.0)
+        mock_thread.join.assert_called_once_with(timeout=0.0)
+
+
+# ---------------------------------------------------------------------------
+# Signal handling
+# ---------------------------------------------------------------------------
+
+class TestSignalHandling:
+    def test_handle_signal_sets_stop_event(self, consumer):
+        import signal as sig_mod
+        consumer._stop_event.clear()
+        consumer._handle_signal(sig_mod.SIGTERM, None)
+        assert consumer._stop_event.is_set()
