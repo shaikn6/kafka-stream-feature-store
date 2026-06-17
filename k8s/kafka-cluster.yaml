@@ -1,0 +1,231 @@
+# Strimzi Kafka Cluster CRD — production-grade 3-broker, 3-ZooKeeper cluster
+# Operator: Strimzi 0.39+
+# Apply: kubectl apply -f k8s/kafka-cluster.yaml -n kafka
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: feature-store-cluster
+  namespace: kafka
+  labels:
+    app: kafka-feature-store
+    team: platform
+spec:
+  kafka:
+    version: 3.6.0
+    replicas: 3
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+        authentication:
+          type: tls
+      - name: external
+        port: 9094
+        type: loadbalancer
+        tls: true
+        authentication:
+          type: tls
+        configuration:
+          bootstrap:
+            annotations:
+              service.beta.kubernetes.io/aws-load-balancer-type: nlb
+          brokers:
+            - broker: 0
+              annotations:
+                service.beta.kubernetes.io/aws-load-balancer-type: nlb
+            - broker: 1
+              annotations:
+                service.beta.kubernetes.io/aws-load-balancer-type: nlb
+            - broker: 2
+              annotations:
+                service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    authorization:
+      type: simple
+      superUsers:
+        - User:admin
+        - User:feature-store-producer
+        - User:feature-store-consumer
+    config:
+      offsets.topic.replication.factor: 3
+      transaction.state.log.replication.factor: 3
+      transaction.state.log.min.isr: 2
+      default.replication.factor: 3
+      min.insync.replicas: 2
+      inter.broker.protocol.version: "3.6"
+      log.retention.hours: 168          # 7 days default
+      log.retention.bytes: "107374182400"  # 100 GiB per partition
+      log.segment.bytes: "1073741824"   # 1 GiB segments
+      num.partitions: 12
+      num.recovery.threads.per.data.dir: 4
+      num.network.threads: 8
+      num.io.threads: 16
+      socket.send.buffer.bytes: "1048576"
+      socket.receive.buffer.bytes: "1048576"
+      socket.request.max.bytes: "104857600"
+      auto.create.topics.enable: "false"
+      delete.topic.enable: "true"
+      compression.type: lz4
+      message.max.bytes: "10485760"     # 10 MiB max message
+    storage:
+      type: jbod
+      volumes:
+        - id: 0
+          type: persistent-claim
+          size: 500Gi
+          class: gp3
+          deleteClaim: false
+    resources:
+      requests:
+        memory: 8Gi
+        cpu: "2"
+      limits:
+        memory: 16Gi
+        cpu: "4"
+    jvmOptions:
+      -Xms: 4096m
+      -Xmx: 4096m
+      gcLoggingEnabled: true
+    template:
+      pod:
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                    - key: strimzi.io/name
+                      operator: In
+                      values:
+                        - feature-store-cluster-kafka
+                topologyKey: kubernetes.io/hostname
+        tolerations:
+          - key: dedicated
+            operator: Equal
+            value: kafka
+            effect: NoSchedule
+        topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: topology.kubernetes.io/zone
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                strimzi.io/name: feature-store-cluster-kafka
+      kafkaContainer:
+        env:
+          - name: KAFKA_HEAP_OPTS
+            value: "-Xms4g -Xmx4g"
+  zookeeper:
+    replicas: 3
+    storage:
+      type: persistent-claim
+      size: 50Gi
+      class: gp3
+      deleteClaim: false
+    resources:
+      requests:
+        memory: 2Gi
+        cpu: "500m"
+      limits:
+        memory: 4Gi
+        cpu: "1"
+    jvmOptions:
+      -Xms: 512m
+      -Xmx: 512m
+    template:
+      pod:
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                    - key: strimzi.io/name
+                      operator: In
+                      values:
+                        - feature-store-cluster-zookeeper
+                topologyKey: kubernetes.io/hostname
+  entityOperator:
+    topicOperator:
+      resources:
+        requests:
+          memory: 256Mi
+          cpu: "100m"
+        limits:
+          memory: 512Mi
+          cpu: "500m"
+    userOperator:
+      resources:
+        requests:
+          memory: 256Mi
+          cpu: "100m"
+        limits:
+          memory: 512Mi
+          cpu: "500m"
+---
+# KafkaUser for the feature-store producer (mutual TLS auth)
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: feature-store-producer
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: feature-store-cluster
+spec:
+  authentication:
+    type: tls
+  authorization:
+    type: simple
+    acls:
+      - resource:
+          type: topic
+          name: raw-events
+          patternType: literal
+        operation: Write
+      - resource:
+          type: topic
+          name: raw-events
+          patternType: literal
+        operation: Create
+      - resource:
+          type: topic
+          name: feature-updates
+          patternType: literal
+        operation: Write
+      - resource:
+          type: transactionalId
+          name: feature-producer-*
+          patternType: prefix
+        operation: All
+---
+# KafkaUser for the feature-store consumer
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: feature-store-consumer
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: feature-store-cluster
+spec:
+  authentication:
+    type: tls
+  authorization:
+    type: simple
+    acls:
+      - resource:
+          type: topic
+          name: raw-events
+          patternType: literal
+        operation: Read
+      - resource:
+          type: topic
+          name: feature-updates
+          patternType: literal
+        operation: Read
+      - resource:
+          type: group
+          name: feature-store-cg
+          patternType: prefix
+        operation: Read
