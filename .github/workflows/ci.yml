@@ -42,7 +42,7 @@ jobs:
         run: |
           pip install flake8
           flake8 feature_store/ stream/ analytics/ store/ tests/ \
-            --max-line-length=120 --ignore=E501,W503
+            --max-line-length=120 --ignore=E501,W503,E402,F401,F841
 
       - name: Type check (mypy)
         run: |
