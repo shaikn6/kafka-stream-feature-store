@@ -26,7 +26,7 @@ from feature_store.schemas.feature_event import FeatureDefinition
 logger = logging.getLogger(__name__)
 
 _DATABASE_URL_DEFAULT = os.getenv("DATABASE_URL")
-if _DATABASE_URL_DEFAULT is None:
+if _DATABASE_URL_DEFAULT is None:  # pragma: no cover
     raise RuntimeError(
         "DATABASE_URL environment variable is required. "
         "Example: postgresql://user:password@localhost:5432/featurestore"

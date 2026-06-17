@@ -215,3 +215,65 @@ class TestLifecycle:
         for _ in range(20):
             stale, total = monitor.get_stale_counts()
         monitor.stop()
+
+
+# ---------------------------------------------------------------------------
+# Edge cases: expired key, naive timezone, exception in run loop
+# ---------------------------------------------------------------------------
+
+class TestCheckFeatureEdgeCases:
+    def test_check_feature_skips_expired_key(self, monitor, fake_redis):
+        """Key present in SCAN but None from GET (expired between scan and get)."""
+        write_feature(fake_redis, "user_exp", "rolling_7d_spend", age_seconds=200)
+        from unittest.mock import patch
+        with patch.object(fake_redis, "get", return_value=None):
+            defn = FeatureDefinition(
+                feature_name="rolling_7d_spend",
+                description="test",
+                owner="test",
+                expected_freshness_seconds=45,
+                value_type="float",
+            )
+            result = monitor._check_feature(defn)
+        assert result == []
+
+    def test_check_feature_handles_naive_timestamp(self, monitor, fake_redis):
+        """Naive (no tzinfo) timestamp in Redis is treated as UTC."""
+        naive_ts = datetime.utcnow() - timedelta(seconds=200)
+        key = "feature:user_naive:rolling_7d_spend"
+        payload = {
+            "value": 10.0,
+            "timestamp": naive_ts.isoformat(),  # no tzinfo
+            "source": "test",
+            "schema_version": "1.0",
+        }
+        fake_redis.set(key, json.dumps(payload))
+        defn = FeatureDefinition(
+            feature_name="rolling_7d_spend",
+            description="test",
+            owner="test",
+            expected_freshness_seconds=45,
+            value_type="float",
+        )
+        result = monitor._check_feature(defn)
+        assert "user_naive" in result
+
+    def test_run_loop_handles_check_exception(self, monitor):
+        """Exception in _check_all_features is caught; thread keeps running."""
+        import time
+        from unittest.mock import patch
+        raised = []
+
+        def raise_once():
+            if not raised:
+                raised.append(True)
+                raise RuntimeError("simulated monitor error")
+
+        with patch.object(monitor, "_check_all_features", side_effect=raise_once):
+            monitor._interval = 0.01
+            monitor.start()
+            deadline = time.time() + 1.0
+            while not raised and time.time() < deadline:
+                time.sleep(0.01)
+            monitor.stop(timeout=1.0)
+        assert raised, "Exception should have been raised in the run loop"

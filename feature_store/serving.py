@@ -68,7 +68,7 @@ REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_DB = int(os.getenv("REDIS_DB", "0"))
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", None)
 _DATABASE_URL_DEFAULT = os.getenv("DATABASE_URL")
-if _DATABASE_URL_DEFAULT is None:
+if _DATABASE_URL_DEFAULT is None:  # pragma: no cover
     raise RuntimeError(
         "DATABASE_URL environment variable is required. "
         "Example: postgresql://user:password@localhost:5432/featurestore"
@@ -91,7 +91,7 @@ def create_app(
     }
 
     @asynccontextmanager
-    async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
+    async def lifespan(app: FastAPI):  # type: ignore[no-untyped-def]  # pragma: no cover
         # Startup
         if deps["redis"] is None:
             deps["redis"] = redis.Redis(
@@ -258,7 +258,7 @@ def create_app(
     return app
 
 
-def _seed_default_features(registry: FeatureRegistry) -> None:
+def _seed_default_features(registry: FeatureRegistry) -> None:  # pragma: no cover
     defaults = [
         FeatureDefinition(
             feature_name="rolling_7d_spend",

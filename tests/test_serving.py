@@ -343,3 +343,40 @@ class TestInputValidation:
         put_feature_in_redis(fake_redis, "cust_001", "rolling_7d_spend", 10.0)
         response = await client.get("/features/cust_001/rolling_7d_spend")
         assert response.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Naive timestamp handling (lines 170, 217)
+# ---------------------------------------------------------------------------
+
+def put_naive_feature_in_redis(redis_client, entity_id: str, feature_name: str, value, age_seconds: float = 5.0) -> None:
+    """Write a feature payload with a naive (no tzinfo) timestamp."""
+    from datetime import timedelta
+    ts = datetime.utcnow() - timedelta(seconds=age_seconds)
+    key = f"feature:{entity_id}:{feature_name}"
+    payload = {
+        "value": value,
+        "timestamp": ts.isoformat(),  # no tzinfo — naive datetime
+        "source": "test",
+        "schema_version": "1.0",
+    }
+    redis_client.set(key, json.dumps(payload))
+
+
+class TestNaiveTimestamp:
+    @pytest.mark.asyncio
+    async def test_entity_features_handles_naive_timestamp(self, client, fake_redis, registry):
+        put_naive_feature_in_redis(fake_redis, "cust_naive", "rolling_7d_spend", 99.0, age_seconds=5.0)
+        response = await client.get("/features/cust_naive")
+        assert response.status_code == 200
+        data = response.json()
+        feature = data["features"].get("rolling_7d_spend")
+        assert feature is not None
+
+    @pytest.mark.asyncio
+    async def test_single_feature_handles_naive_timestamp(self, client, fake_redis):
+        put_naive_feature_in_redis(fake_redis, "cust_naive2", "rolling_7d_spend", 42.0, age_seconds=5.0)
+        response = await client.get("/features/cust_naive2/rolling_7d_spend")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["value"] == 42.0
