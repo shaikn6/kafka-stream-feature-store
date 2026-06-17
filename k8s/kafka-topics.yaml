@@ -1,0 +1,100 @@
+# Strimzi KafkaTopic CRDs — managed by Strimzi Topic Operator
+# Apply: kubectl apply -f k8s/kafka-topics.yaml -n kafka
+---
+# raw-events: high-throughput inbound feature events from upstream services
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: raw-events
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: feature-store-cluster
+spec:
+  partitions: 24        # 24 partitions → ~24 parallel consumers
+  replicas: 3
+  config:
+    retention.ms: "604800000"          # 7 days
+    retention.bytes: "107374182400"    # 100 GiB per partition
+    segment.bytes: "1073741824"        # 1 GiB
+    cleanup.policy: delete
+    compression.type: lz4
+    min.insync.replicas: "2"
+    message.format.version: "3.6-IV0"
+    max.message.bytes: "10485760"      # 10 MiB
+---
+# feature-updates: computed feature vectors ready for serving layer
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: feature-updates
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: feature-store-cluster
+spec:
+  partitions: 12
+  replicas: 3
+  config:
+    retention.ms: "86400000"           # 24 hours (hot features only)
+    retention.bytes: "10737418240"     # 10 GiB per partition
+    segment.bytes: "536870912"         # 512 MiB
+    cleanup.policy: delete
+    compression.type: snappy
+    min.insync.replicas: "2"
+    max.message.bytes: "1048576"       # 1 MiB
+---
+# feature-updates-dlq: dead-letter queue for failed feature computations
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: feature-updates-dlq
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: feature-store-cluster
+spec:
+  partitions: 6
+  replicas: 3
+  config:
+    retention.ms: "2592000000"         # 30 days for DLQ inspection
+    retention.bytes: "5368709120"      # 5 GiB per partition
+    segment.bytes: "268435456"         # 256 MiB
+    cleanup.policy: delete
+    compression.type: gzip
+    min.insync.replicas: "2"
+---
+# raw-events-dlq: dead-letter queue for malformed inbound events
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: raw-events-dlq
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: feature-store-cluster
+spec:
+  partitions: 6
+  replicas: 3
+  config:
+    retention.ms: "2592000000"         # 30 days
+    retention.bytes: "2147483648"      # 2 GiB per partition
+    cleanup.policy: delete
+    compression.type: gzip
+    min.insync.replicas: "2"
+---
+# feature-audit: append-only audit log of all feature writes (compact + delete)
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: feature-audit
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: feature-store-cluster
+spec:
+  partitions: 6
+  replicas: 3
+  config:
+    cleanup.policy: "compact,delete"
+    retention.ms: "2592000000"         # 30 days
+    min.compaction.lag.ms: "3600000"   # 1 hour before compaction eligible
+    delete.retention.ms: "86400000"
+    segment.bytes: "268435456"
+    compression.type: lz4
+    min.insync.replicas: "2"
