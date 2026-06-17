@@ -50,6 +50,8 @@ jobs:
           mypy feature_store/ --ignore-missing-imports --no-strict-optional || true
 
       - name: Run V1 tests with coverage
+        env:
+          DATABASE_URL: "sqlite:///test_feature_store.db"
         run: |
           pip install pytest-cov
           pytest tests/test_consumer.py tests/test_producer.py \
