@@ -74,7 +74,7 @@ jobs:
             echo "Spark tests skipped (pyspark may not be installed in this matrix)"
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v7
         if: matrix.python-version == '3.9'
         with:
           files: coverage.xml
