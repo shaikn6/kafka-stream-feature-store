@@ -82,15 +82,21 @@ flowchart LR
 
 ## Freshness Guarantee
 
-| Mechanism | Contribution |
-|-----------|-------------|
-| Kafka consumer lag | < 5s at 10 events/sec |
-| Redis pipeline write | < 1ms |
-| Network round-trip | < 2ms |
-| **Total p99 freshness** | **< 45s** |
+Freshness is an explicit, **enforced** SLA rather than an assumed number. Two
+mechanisms guarantee the window instead of merely advertising it:
 
-The system sustained 45s average freshness in production (vs. 24h batch), measured
-from event emission to feature availability in the serving layer.
+1. **Redis TTL** — every materialized feature is written with
+   `TTL = 2 x expected_freshness_seconds`, so values that fall outside their
+   freshness window self-expire and disappear from the serving layer.
+2. **Background monitor** — `FeatureMonitor` scans Redis on a configurable
+   interval, compares each feature's age to its registry SLA, and exposes a live
+   stale count via `GET /health`.
+
+The end-to-end freshness budget is dominated by Kafka consumer lag plus a
+sub-millisecond Redis pipeline write; the serving and read paths add only a
+local lookup. Actual freshness depends on producer rate, partition count, and
+consumer scaling — the registry's `expected_freshness_seconds` (default 45 in
+the seed data) is the target the TTL and monitor enforce.
 
 ## Scaling Notes
 
