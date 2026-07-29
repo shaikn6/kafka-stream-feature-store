@@ -21,6 +21,6 @@ pyspark>=3.5.0
 duckdb>=1.5.4
 pyarrow>=24.0.0
 matplotlib>=3.7.0
-numpy>=1.24.0
+numpy>=2.5.1
 pandas>=3.0.3
 streamlit>=1.58.0
