@@ -1,5 +1,6 @@
 # kafka-stream-feature-store
 
+[![CI](https://github.com/shaikn6/kafka-stream-feature-store/actions/workflows/ci.yml/badge.svg)](https://github.com/shaikn6/kafka-stream-feature-store/actions)
 ![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-22c55e)
 ![Tests](https://img.shields.io/badge/Tests-284%20passing-22c55e)
