@@ -14,7 +14,7 @@ fakeredis>=2.23.0
 asyncpg>=0.27.0
 alembic>=1.18.5
 structlog>=22.3.0
-prometheus-client>=0.15.0
+prometheus-client>=0.26.0
 
 # V2 additions
 pyspark>=3.5.0
